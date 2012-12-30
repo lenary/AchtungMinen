@@ -1,18 +1,14 @@
 module AchtungMinen.World where
 
-type Coord = (Integer, Integer)
+type Coord = (Int, Int)
 
 data Move = Try Coord
           | Mined Coord
           deriving (Show)
 
-data Response = Safe [(Coord, Clue)]
+data Response = Safe [(Coord, Int)]
               | Dead
               deriving (Show)
-
-data Clue = Empty
-          | Near Integer
-          deriving (Show)
 
 class Player p where
   -- |'sendMove' asks the player for their next move
@@ -23,11 +19,20 @@ class Player p where
 maxCoord :: Coord
 maxCoord = (10, 10)
 
-x, y :: Coord -> Integer
+mineCount :: Int
+mineCount = 10
+
+x, y :: Coord -> Int
 x = fst
 y = snd
 
 allCoords :: [Coord]
 allCoords = [(x', y') | x' <- [1..(x maxCoord)],
                         y' <- [1..(y maxCoord)]]
+
+neighbours :: Coord -> [Coord]
+neighbours c = [ (x',y') | x' <- [(x c - 1)..(x c + 1)]
+                         , y' <- [(y c - 1)..(y c + 1)]
+                         , (x',y') /= c
+                         ]
 

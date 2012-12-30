@@ -1,4 +1,6 @@
-module AchtungMinen.Players.DumbAI where
+module AchtungMinen.Players.DumbAI 
+( player
+) where
   
 import AchtungMinen.World
 
