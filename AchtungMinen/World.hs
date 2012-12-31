@@ -2,17 +2,18 @@ module AchtungMinen.World where
 
 type Coord = (Int, Int)
 
-data Move = Try Coord
-          | Mined Coord
+data Play = Move Coord
+          | Mark Coord
           deriving (Show)
 
-data Response = Safe [(Coord, Int)]
+data Response = Marked
+              | Safe [(Coord, Int)]
               | Dead
               deriving (Show)
 
 class Player p where
   -- |'sendMove' asks the player for their next move
-  sendMove :: p -> IO (p, Move)
+  sendMove :: p -> IO (p, Play)
   -- |'recvResp' lets the player know what happened
   recvResp :: Response -> p -> IO p
 
