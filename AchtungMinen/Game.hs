@@ -9,8 +9,6 @@ import Control.Applicative
 import Control.Monad
 import qualified Control.Monad.Random as R
 import qualified Data.Map as M
-import qualified Data.List as L
-
 
 data Result = Res { won_game :: Bool
                   , mines_found :: Int
@@ -27,11 +25,15 @@ data Square = Mine
 type Board = Map Square
 type Mask  = Map Bool
 
+-- Public API
+
 play :: Player p => p -> IO Result
 play _ = return (Res False 0 0)
 
 score :: Result -> Int
 score r = (coords_cleared r) + (10 * mines_found r) + (if won_game r then 100 else 0)
+
+-- Board Generation
 
 emptyBoard :: Board
 emptyBoard = M.fromList [ (c,Clue 0) | c <- allCoords ]
@@ -67,39 +69,24 @@ countMinedNeighbours b c =
   . (filter (== Mine))
   $ [ M.findWithDefault (Clue 0) c' b | c' <- neighbours c ]
 
--- From here to END needs a rewrite to become faster. Ask pfkh
+-- Revealing Logic
+
 reveal :: Board -> Coord -> [Coord]
-reveal b start | isEmpty b start = L.nub $ revealEmptyNeighbours b $ revealEmpty b start
-               | otherwise       = [start]
-  
-isEmpty :: Board -> Coord -> Bool
-isEmpty b c = M.lookup c b == (Just (Clue 0))
+reveal b start = reveal' b [start] []
 
-revealEmpty :: Board -> Coord -> [Coord]
-revealEmpty b c = revealEmpty' b [c] [] []
-
-revealEmpty' _ [] empty _ = empty
-revealEmpty' b (tc:rest) empty checked | isEmpty b tc = revealEmpty' b (more ++ rest) (tc:empty) (tc:checked)
-                                       | otherwise    = revealEmpty' b  rest           empty     (tc:checked)
+reveal' :: Board -> [Coord] -> [Coord] -> [Coord]
+reveal' _ [] found = found
+reveal' b (search:next) found | isEmpty b search = reveal' b (more ++ next) (search:found)
+                              | otherwise        = reveal' b next (search:found)
   where
-    more = [c | c <- pathNeighbours tc
+    more = [c | c <- neighbours search
+              , c `notElem` found
+              , c `notElem` next
               , c `elem` allCoords
-              , c `notElem` checked
               ]
 
-revealEmptyNeighbours :: Board -> [Coord] -> [Coord]
-revealEmptyNeighbours b es = 
-  [n | e <- es
-     , n <- [e] ++ pathNeighbours e
-     , n `elem` allCoords
-     ]
-
-pathNeighbours :: Coord -> [Coord]
-pathNeighbours (x,y) = [(x,y+1),(x,y-1),(x+1,y),(x-1,y)]
--- END
-
-printBoard :: Board -> IO ()
-printBoard = flip printWithOverlay $ holeyMask
+isEmpty :: Board -> Coord -> Bool
+isEmpty b c = M.lookup c b == (Just (Clue 0))
 
 -- Masks
 
@@ -110,13 +97,18 @@ holeyMask, fullMask :: Mask
 holeyMask = M.fromList [(c,True)  | c <- allCoords]
 fullMask  = M.fromList [(c,False) | c <- allCoords]
 
+-- Printing
+
+printBoard :: Board -> IO ()
+printBoard = flip printWithOverlay $ holeyMask
+
 printMask :: Mask -> IO ()
 printMask = printWithOverlay emptyBoard
     
 printWithOverlay :: Board -> Mask -> IO ()
 printWithOverlay b m =
   putStr
-  $ delinate (y maxCoord + 2)
+  $ delinate (x maxCoord + 2)
   [ shSq (M.lookup (x',y') m) (M.lookup (x',y') b) 
     | y' <- [0..(y maxCoord + 1)]
     , x' <- [0..(x maxCoord + 1)]
