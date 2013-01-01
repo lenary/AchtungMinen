@@ -6,7 +6,6 @@ module AchtungMinen.Game
 import AchtungMinen.World
 
 import Control.Applicative
-import Control.Monad
 import qualified Control.Monad.Random as R
 import qualified Data.Map as M
 import qualified Data.List as L
@@ -69,6 +68,10 @@ countMinedNeighbours b c =
   length 
   $ minedSquares b `L.intersect` neighbours c
 
+safeSquares, minedSquares :: Field -> [Coord]
+safeSquares = M.keys . M.filter (/= Mine)
+minedSquares = M.keys . M.filter (== Mine)
+
 -- Revealing Logic
 
 reveal :: Field -> Coord -> Mask
@@ -122,12 +125,6 @@ printBoth b m =
     shSq _            (Just Mine) = '*'
     shSq _            (Just (Clue 0)) = ' '
     shSq _            (Just (Clue x)) = head (show x)
-    delinate _ [] = []
+    delinate  _  [] = []
     delinate len xs = let (before,after) = splitAt len xs 
                       in before ++ "\n" ++ delinate len after
-
---
-
-safeSquares, minedSquares :: Field -> [Coord]
-safeSquares = M.keys . M.filter (/= Mine)
-minedSquares = M.keys . M.filter (== Mine)
