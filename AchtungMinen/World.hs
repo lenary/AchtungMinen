@@ -18,7 +18,7 @@ class Player p where
   recvResp :: Response -> p -> IO p
 
 maxCoord :: Coord
-maxCoord = (10, 10)
+maxCoord = (9, 9)
 
 mineCount :: Int
 mineCount = 10
