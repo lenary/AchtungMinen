@@ -10,12 +10,15 @@ import Control.Monad
 import qualified Control.Monad.Random as R
 import qualified Data.Map as M
 import qualified Data.List as L
-
-data Result = Res { won_game :: Bool
-                  , mines_found :: Int
-                  , coords_cleared :: Int
-                  }
-            deriving (Show)
+            
+data GameState = InProgress { field :: Field
+                            , fog :: Mask
+                            }
+               | Finished { won_game :: Bool
+                          , mines_found :: Int
+                          , coords_cleared :: Int
+                          }
+               deriving (Show)
             
 type Map a = M.Map Coord a
 
@@ -23,67 +26,66 @@ data Square = Mine
             | Clue Int
             deriving (Show,Eq)
 
-type Board = Map Square
+type Field = Map Square
 type Mask  = Map Bool
 
 -- Public API
 
-play :: Player p => p -> IO Result
-play _ = return (Res False 0 0)
+play :: Player p => p -> IO (Bool, Int, Int)
+play _ = return (False, 0, 0)
 
-score :: Result -> Int
-score r = (coords_cleared r) + (10 * mines_found r) + (if won_game r then 100 else 0)
+score :: (Bool, Int, Int) -> Int
+score (won, found, cleared) = cleared + 10 * found + (if won then 100 else 0)
 
--- Board Generation
+-- Field Generation
 
-emptyBoard :: Board
-emptyBoard = M.fromList [ (c,Clue 0) | c <- allCoords ]
+emptyField :: Field
+emptyField = M.fromList [ (c,Clue 0) | c <- allCoords ]
 
-genBoard :: IO Board
-genBoard = genClues <$> genMines emptyBoard
+genField :: IO Field
+genField = genClues <$> genMines emptyField
 
-genMines :: Board -> IO Board
+genMines :: Field -> IO Field
 genMines b = iterate addMine (pure b) !! mineCount
   
-genClues :: Board -> Board
+genClues :: Field -> Field
 genClues b = M.mapWithKey (addClue b) b
 
-addMine :: IO Board -> IO Board
+addMine :: IO Field -> IO Field
 addMine ib = do
   b <- ib
   c <- randomFromList $ safeSquares b
   return $ M.insert c Mine b
   
-addClue :: Board -> Coord -> Square -> Square
+addClue :: Field -> Coord -> Square -> Square
 addClue _ _ Mine = Mine
 addClue b c _    = Clue $ countMinedNeighbours b c
   
 randomFromList :: [a] -> IO a
 randomFromList lst = R.fromList $ map (\x -> (x, 1)) lst
-  
 
-countMinedNeighbours :: Board -> Coord -> Int
+countMinedNeighbours :: Field -> Coord -> Int
 countMinedNeighbours b c = 
   length 
   $ minedSquares b `L.intersect` neighbours c
 
 -- Revealing Logic
 
-reveal :: Board -> Coord -> [Coord]
-reveal b start = reveal' b [start] []
+reveal :: Field -> Coord -> Mask
+reveal b start = reveal' b [start] fullMask
 
-reveal' :: Board -> [Coord] -> [Coord] -> [Coord]
-reveal' _ [] found = found
-reveal' b (search:next) found | isEmpty b search = reveal' b (more ++ next) (search:found)
-                              | otherwise        = reveal' b next (search:found)
+reveal' :: Field -> [Coord] -> Mask -> Mask
+reveal' _ []            found = found
+reveal' b (search:next) found | isEmpty b search = reveal' b (more ++ next) (M.insert search True found)
+                              | otherwise        = reveal' b next           (M.insert search True found)
   where
     more = [c | c <- neighbours search
-              , c `notElem` found
+              , c `notElem` M.keys (M.filter id found)
               , c `notElem` next
               , c `elem` allCoords
               ]
 
-isEmpty :: Board -> Coord -> Bool
+isEmpty :: Field -> Coord -> Bool
 isEmpty b c = M.lookup c b == (Just (Clue 0))
 
 -- Masks
@@ -95,15 +97,18 @@ holeyMask, fullMask :: Mask
 holeyMask = M.fromList [(c,True)  | c <- allCoords]
 fullMask  = M.fromList [(c,False) | c <- allCoords]
 
+subtractMasks :: Mask -> Mask -> Mask
+subtractMasks = M.unionWith (||)
+
 -- Printing
 
-printBoard :: Board -> IO ()
-printBoard = flip printBoth $ holeyMask
+printField :: Field -> IO ()
+printField = flip printBoth $ holeyMask
 
 printOverlay :: Mask -> IO ()
-printOverlay = printBoth emptyBoard
+printOverlay = printBoth emptyField
     
-printBoth :: Board -> Mask -> IO ()
+printBoth :: Field -> Mask -> IO ()
 printBoth b m =
   putStr
   $ delinate (x maxCoord + 2)
@@ -123,6 +128,6 @@ printBoth b m =
 
 --
 
-safeSquares, minedSquares :: Board -> [Coord]
+safeSquares, minedSquares :: Field -> [Coord]
 safeSquares = M.keys . M.filter (/= Mine)
 minedSquares = M.keys . M.filter (== Mine)
