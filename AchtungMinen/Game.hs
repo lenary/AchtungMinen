@@ -9,6 +9,7 @@ import Control.Applicative
 import Control.Monad
 import qualified Control.Monad.Random as R
 import qualified Data.Map as M
+import qualified Data.List as L
 
 data Result = Res { won_game :: Bool
                   , mines_found :: Int
@@ -60,14 +61,11 @@ addClue b c _    = Clue $ countMinedNeighbours b c
 randomFromList :: [a] -> IO a
 randomFromList lst = R.fromList $ map (\x -> (x, 1)) lst
   
-safeSquares :: Board -> [Coord]
-safeSquares = M.keys . M.filter (/= Mine)
 
 countMinedNeighbours :: Board -> Coord -> Int
 countMinedNeighbours b c = 
   length 
-  . (filter (== Mine))
-  $ [ M.findWithDefault (Clue 0) c' b | c' <- neighbours c ]
+  $ minedSquares b `L.intersect` neighbours c
 
 -- Revealing Logic
 
@@ -100,13 +98,13 @@ fullMask  = M.fromList [(c,False) | c <- allCoords]
 -- Printing
 
 printBoard :: Board -> IO ()
-printBoard = flip printWithOverlay $ holeyMask
+printBoard = flip printBoth $ holeyMask
 
-printMask :: Mask -> IO ()
-printMask = printWithOverlay emptyBoard
+printOverlay :: Mask -> IO ()
+printOverlay = printBoth emptyBoard
     
-printWithOverlay :: Board -> Mask -> IO ()
-printWithOverlay b m =
+printBoth :: Board -> Mask -> IO ()
+printBoth b m =
   putStr
   $ delinate (x maxCoord + 2)
   [ shSq (M.lookup (x',y') m) (M.lookup (x',y') b) 
@@ -114,7 +112,7 @@ printWithOverlay b m =
     , x' <- [0..(x maxCoord + 1)]
     ]
   where
-    shSq Nothing _ = '+'
+    shSq Nothing      _ = '+'
     shSq (Just False) _ = '#'
     shSq _            (Just Mine) = '*'
     shSq _            (Just (Clue 0)) = ' '
@@ -122,3 +120,9 @@ printWithOverlay b m =
     delinate _ [] = []
     delinate len xs = let (before,after) = splitAt len xs 
                       in before ++ "\n" ++ delinate len after
+
+--
+
+safeSquares, minedSquares :: Board -> [Coord]
+safeSquares = M.keys . M.filter (/= Mine)
+minedSquares = M.keys . M.filter (== Mine)
