@@ -1,4 +1,4 @@
-module AchtungMinen.Game 
+module AchtungMinen.Game
 ( play
 , score
 ) where
@@ -9,7 +9,7 @@ import Control.Applicative
 import qualified Control.Monad.Random as R
 import qualified Data.Map as M
 import qualified Data.List as L
-            
+
 data GameState = InProgress { field :: Field
                             , fog :: Mask
                             }
@@ -18,10 +18,10 @@ data GameState = InProgress { field :: Field
                           , coords_cleared :: Int
                           }
                deriving (Show)
-            
+
 type Map a = M.Map Coord a
 
-data Square = Mine 
+data Square = Mine
             | Clue Int
             deriving (Show,Eq)
 
@@ -46,7 +46,7 @@ genField = genClues <$> genMines emptyField
 
 genMines :: Field -> IO Field
 genMines b = iterate addMine (pure b) !! mineCount
-  
+
 genClues :: Field -> Field
 genClues b = M.mapWithKey (addClue b) b
 
@@ -55,17 +55,17 @@ addMine ib = do
   b <- ib
   c <- randomFromList $ safeSquares b
   return $ M.insert c Mine b
-  
+
 addClue :: Field -> Coord -> Square -> Square
 addClue _ _ Mine = Mine
 addClue b c _    = Clue $ countMinedNeighbours b c
-  
+
 randomFromList :: [a] -> IO a
-randomFromList lst = R.fromList $ map (\x -> (x, 1)) lst
+randomFromList lst = R.fromList $ map (\e -> (e, 1)) lst
 
 countMinedNeighbours :: Field -> Coord -> Int
-countMinedNeighbours b c = 
-  length 
+countMinedNeighbours b c =
+  length
   $ minedSquares b `L.intersect` neighbours c
 
 safeSquares, minedSquares :: Field -> [Coord]
@@ -110,21 +110,22 @@ printField = flip printBoth $ holeyMask
 
 printOverlay :: Mask -> IO ()
 printOverlay = printBoth emptyField
-    
+
 printBoth :: Field -> Mask -> IO ()
 printBoth b m =
   putStr
   $ delinate (x maxCoord + 2)
-  [ shSq (M.lookup (x',y') m) (M.lookup (x',y') b) 
+  [ shSq (M.lookup (x',y') m) (M.lookup (x',y') b)
     | y' <- [0..(y maxCoord + 1)]
     , x' <- [0..(x maxCoord + 1)]
     ]
   where
     shSq Nothing      _ = '+'
     shSq (Just False) _ = '#'
+    shSq _            Nothing = '+'
     shSq _            (Just Mine) = '*'
     shSq _            (Just (Clue 0)) = ' '
-    shSq _            (Just (Clue x)) = head (show x)
+    shSq _            (Just (Clue n)) = head (show n)
     delinate  _  [] = []
-    delinate len xs = let (before,after) = splitAt len xs 
+    delinate len xs = let (before,after) = splitAt len xs
                       in before ++ "\n" ++ delinate len after
