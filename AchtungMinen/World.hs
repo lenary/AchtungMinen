@@ -17,6 +17,15 @@ data Response = Flagged
               | Died [Coord]
               deriving (Show)
 
+-- | How did the game end?
+--
+-- Did you die, how many flags were correct, how many incorrect?
+data Result = Result
+              { alive :: Bool
+              , flaggedCorrectly :: Int
+              , flaggedInCorrectly :: Int
+              } deriving (Show)
+
 -- | All players should implement this typeclass in order to play
 class Player p where
   -- | 'sendMove' asks the player for their next move

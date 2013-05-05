@@ -7,4 +7,4 @@ main :: IO ()
 main = do
   p <- P.player
   res <- AM.play p
-  print ("Score", AM.score res, res)
+  print ("Quack!", AM.score res, res)
