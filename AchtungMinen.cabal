@@ -50,7 +50,7 @@ library
   -- other-modules:    
   
   -- Other library packages from which modules are imported.
-  build-depends:       base, random ==1.0.*, MonadRandom ==0.1.*, containers, mtl
+  build-depends:       base, random ==1.0.*, MonadRandom ==0.1.*, containers, transformers, mtl
   
 executable Main
   -- .hs or .lhs file containing the Main module.
@@ -60,4 +60,4 @@ executable Main
   -- other-modules:       
   
   -- Other library packages from which modules are imported.
-  build-depends:       base, random ==1.0.*, MonadRandom ==0.1.*, containers, mtl
+  build-depends:       base, random ==1.0.*, MonadRandom ==0.1.*, containers, transformers, mtl
